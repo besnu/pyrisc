@@ -95,39 +95,64 @@ class Memory(object):
 
     def __init__(self, mem_start, mem_size, word_size):
         self.word_size  = word_size
-        self.mem_words  = mem_size // word_size
         self.mem_start  = mem_start
         self.mem_end    = mem_start + mem_size
-        self.mem        = WORD([0] * self.mem_words)
+        self.mem        = bytearray(mem_size)
 
     def access(self, valid, addr, data, fcn):
-
-        if (not valid):                    
+        if (not valid):
             res = ( WORD(0), True )
         elif (addr < self.mem_start) or (addr >= self.mem_end) or \
             addr % self.word_size != 0:
             res = ( WORD(0) , False )
         elif fcn == M_XRD:
-            val = self.mem[(addr - self.mem_start) // self.word_size]
-            res = ( val, True )
+            offset = addr - self.mem_start
+            val = int.from_bytes(self.mem[offset:offset+self.word_size], 'little')
+            res = ( WORD(val), True )
         elif fcn == M_XWR:
-            self.mem[(addr - self.mem_start) // self.word_size] = WORD(data) 
+            data = int(data)
+            offset = addr - self.mem_start
+            self.mem[offset:offset+self.word_size] = data.to_bytes(self.word_size, 'little')
             res = ( WORD(0), True )
         else:
             res = ( WORD(0), False )
 
         return res
 
+    def copy_to(self, addr, data):
+        if (addr < self.mem_start) or (addr + len(data) >= self.mem_end):
+            raise Exception("Cannot copy data into memory: invalid address")
+
+        offset = addr - self.mem_start
+        self.mem[offset:offset+len(data)] = data
+
+    def copy_from(self, addr, nbytes):
+        if (addr < self.mem_start) or (addr + nbytes >= self.mem_end):
+            raise Exception("Cannot copy data from memory: invalid address")
+
+        data = bytearray(nbytes)
+        offset = addr - self.mem_start
+        data[0:nbytes] = self.mem[offset:offset+nbytes]
+
+        return data
+
     def dump(self, skipzero = False):
 
         print("Memory 0x%08x - 0x%08x" % (self.mem_start, self.mem_end - 1))
         print("=" * 30)
+        skipz = False
+        printsz = True
         for a in range(self.mem_start, self.mem_end, self.word_size):
             val, status = self.access(True, a, 0, M_XRD)
             if not status:
                 continue
-            if (not skipzero) or (val != 0):
+            if (not skipzero) or (not skipz) or (val != 0):
+                skipz = val == 0
+                printsz = True
                 print("0x%08x: " % a, ' '.join("%02x" % ((val >> i) & 0xff) for i in [0, 8, 16, 24]), " (0x%08x)" % val)
+            elif printsz:
+                printsz = False
+                print("             ...")
 
 
 #--------------------------------------------------------------------------

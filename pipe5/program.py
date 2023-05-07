@@ -100,7 +100,7 @@ class Program(object):
                 return WORD(0)
 
             entry_point = WORD(efh['e_entry'])
-            
+
             for seg in ef.iter_segments():
                 addr = seg.header['p_vaddr']
                 memsz = seg.header['p_memsz']
@@ -120,7 +120,7 @@ class Program(object):
                     mem.access(True, addr, c, M_XWR)
                     addr += WORD_SIZE
             return entry_point
-                   
+
     @staticmethod
     def disasm(pc, inst):
 

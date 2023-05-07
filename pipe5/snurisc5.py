@@ -15,6 +15,7 @@
 #
 #==========================================================================
 
+import argparse
 import sys
 
 from consts import *
@@ -50,7 +51,7 @@ class SNURISC5(object):
         stages = [ IF(), ID(), EX(), MM(), WB() ]
         self.ctl = Control()
         Pipe.set_stages(self, stages, self.ctl)
-       
+
         self.rf = RegisterFile()
         self.alu = ALU()
         self.imem = Memory(IMEM_START, IMEM_SIZE, WORD_SIZE)
@@ -68,7 +69,7 @@ class SNURISC5(object):
 
 def show_usage(name):
     print("SNURISC5: A 5-stage Pipelined RISC-V ISA Simulator in Python")
-    print("Usage: %s [-l n] [-c m] filename" % name)
+    print("Usage: %s [-l n] [-c m] [-i addr size filename] [-o addr size filename] filename" % name)
     print("\tfilename: RISC-V executable file name")
     print("\t-l sets the desired log level n (default: 4)")
     print("\t   0: shows no output message")
@@ -80,44 +81,85 @@ def show_usage(name):
     print("\t   6: 5 + dumps registers for each cycle")
     print("\t   7: 6 + dumps data memory for each cycle")
     print("\t-c shows logs after cycle m (default: 0, only effective for log level 3 or higher)")
+    print("\t-i load 'filename' to 'addr' (maximum size 'size')")
+    print("\t-o save memory from 'addr' to 'addr'+'size' to 'filename' after program ends")
 
 
 def parse_args(args):
-    if (not len(args) in [ 2, 4, 6 ]):
-        return None
 
-    index = 1
-    while True:
-        if args[index].startswith('-'):
-            if args[index] == '-l':
-                try:
-                    level = int(args[index + 1])
-                except ValueError:
-                    level = 999
-                if level > Log.MAX_LOG_LEVEL:
-                    print("Invalid log level '%s'" % args[index + 1])
-                    return None
-                index += 2
-                Log.level = level
-            elif args[index] == '-c':
-                try:
-                    cycle = int(args[index + 1])
-                except ValueError:
-                    print("Invalid cycle number '%s'" % args[index + 1])
-                    return None
-                index += 2
-                Log.start_cycle = cycle
-            else:
-                print("Invalid option '%s'" % args[index])
-                return None
-        else:
-            break
+    # Parse command line
+    parser = argparse.ArgumentParser(usage='%(prog)s --help for more information', 
+                                     formatter_class=argparse.RawTextHelpFormatter)
+    parser.add_argument("--log", "-l", type=int, default=Log.level, help='''sets the desired log level (default: %(default)s)
+  0: logging disabled
+  1: dumps registers at the end of the execution
+  2: dumps registers and memory at the end of the execution
+  3: 2 + shows instructions retired from the WB stage
+  4: 3 + shows all the instructions in the pipeline
+  5: 4 + shows full information for each instruction
+  6: 5 + dumps registers for each cycle
+  7: 6 + dumps data memory for each cycle''')
+    parser.add_argument("--cycle", "-c", type=int, default=0,
+                        help="shows logs after cycle m (default: %(default)s, only effective for log level 3 or higher)")
+    parser.add_argument("--input", "-i", action="append", nargs=3, metavar=("address", "maxsize", "filename"),
+                        help="Load file to the indicated address before execution. Aborts of the file is larger than maxsize.")
+    parser.add_argument("--output", "-o", action="append", nargs=3, metavar=("address", "size", "filename"),
+                        help="Save the memory from address to address+size-1 to a file.")
+    parser.add_argument("filename", type=str, help="RISC-V executable file name")
 
-    if len(args) != index + 1:
-        print("Invalid argument '%s'" % args[index + 1:])
-        return None
+    args = parser.parse_args()
 
-    return args[index]      # executable file name
+    # Argument checks
+    if args.log < 0 or args.log > Log.MAX_LOG_LEVEL:
+        print("Invalid log level {args.log}. Valid range: 0 .. {Log.MAX_LOG_LEVEL}")
+        parser.print_help()
+        exit(1)
+
+    # Set arguments
+    Log.level = args.log
+    Log.start_cycle = args.cycle
+
+    return args
+
+
+def load_file(cpu, adr_str, maxsize_str, filename):
+    try:
+        address = int(adr_str, 0)
+        maxsize = int(maxsize_str, 0)
+
+        with open(filename, 'rb') as f:
+            data = bytearray(f.read())
+
+            if len(data) > maxsize:
+                raise ValueError(f"Data of {filename} larger than maximum allowed size ({maxsize})")
+
+            cpu.dmem.copy_to(address, data)
+
+    except ValueError:
+        print(f"Invalid data types in input parameter {adr_str} {maxsize_str} {filename}. Expected types are int int string.")
+        raise
+    except Exception as e:
+        print(f"Error loading data into memory: {e.args[0]}")
+        raise
+
+
+def save_file(cpu, adr_str, size_str, filename):
+    try:
+        address = int(adr_str, 0)
+        size = int(size_str, 0)
+
+        data = cpu.dmem.copy_from(address, size)
+
+        with open(filename, 'wb') as f:
+            f.write(data)
+
+    except ValueError:
+        print(f"Invalid data types in output parameter {adr_str} {size_str} {filename}. Expected types are int int string.")
+        raise
+    except Exception as e:
+        print(f"Error saving data to file: {e.args[0]}")
+        raise
+
 
 
 #--------------------------------------------------------------------------
@@ -126,18 +168,35 @@ def parse_args(args):
 
 def main():
 
-    filename = parse_args(sys.argv)         # parse arguments
-    if not filename:                        # if parse error, exit
-        show_usage(sys.argv[0])
+    # Parse arguments
+    args = parse_args(sys.argv[1:])
+
+    # Instantiate CPU instance with H/W components
+    cpu = SNURISC5()
+
+    # Make program instance
+    prog = Program()
+
+    # Load the program and get its entry point
+    entry_point = prog.load(cpu, args.filename)
+    if not entry_point:                     # abort if no entry point found
         sys.exit()
 
-    cpu = SNURISC5()                        # make a CPU instance with hw components
-    prog = Program()                        # make a program instance
-    entry_point = prog.load(cpu, filename)  # load a program
-    if not entry_point:                     # if no entry point, exit
-        sys.exit()
-    cpu.run(entry_point)                    # run the program starting from entry_point
-    Stat.show()                             # show stats
+    # Load input files
+    if args.input:
+        for item in args.input:
+            load_file(cpu, item[0], item[1], item[2])
+
+    # Execute program
+    cpu.run(entry_point)
+
+    # Save output files
+    if args.output:
+        for item in args.output:
+            save_file(cpu, item[0], item[1], item[2])
+
+    # Show statistics
+    Stat.show()
 
 
 if __name__ == '__main__':
