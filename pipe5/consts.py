@@ -23,6 +23,8 @@ import numpy as np
 WORD                = np.uint32
 SWORD               = np.int32
 
+BITWIDTH            = np.dtype(WORD).itemsize * 8
+
 Y                   = True
 N                   = False
 
