@@ -199,6 +199,8 @@ class ALU(object):
             output = alu2
         elif alufun == ALU_SEQ:
             output = WORD(1) if (alu1 == alu2) else WORD(0)
+        elif alufun == ALU_MUL:
+            output = WORD(alu1 * alu2)
         else:
             output = WORD(0)
 

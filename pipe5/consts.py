@@ -177,6 +177,7 @@ ALU_SLTU            = 10
 ALU_COPY1           = 11
 ALU_COPY2           = 12
 ALU_SEQ             = 13        # Set if equal
+ALU_MUL             = 14        # M extension (partial)
 ALU_X               = 0
 
 

@@ -61,6 +61,9 @@ BGEU        = WORD(0b00000000000000000111000001100011)
 ECALL       = WORD(0b00000000000000000000000001110011)
 EBREAK      = WORD(0b00000000000100000000000001110011)
 
+# M extension
+MUL         = WORD(0b00000010000000000000000000110011)
+
 #--------------------------------------------------------------------------
 #   Instruction masks
 #--------------------------------------------------------------------------
@@ -105,51 +108,56 @@ BGEU_MASK   = WORD(0b00000000000000000111000001111111)
 ECALL_MASK  = WORD(0b11111111111111111111111111111111)
 EBREAK_MASK = WORD(0b11111111111111111111111111111111)
 
+# M extension
+R_MASK      = WORD(0b11111110000000000111000001111111)
+MUL_MASK    = R_MASK
 
 #--------------------------------------------------------------------------
 #   ISA table: for opcode matching, disassembly, and run-time stats
 #--------------------------------------------------------------------------
 
 isa         = { 
-    LW      : [ "lw",       LW_MASK,    IL_TYPE,  CL_MEM,   ],
-    SW      : [ "sw",       SW_MASK,    S_TYPE,   CL_MEM,   ],
-    AUIPC   : [ "auipc",    AUIPC_MASK, U_TYPE,   CL_ALU,   ],
-    LUI     : [ "lui",      LUI_MASK,   U_TYPE,   CL_ALU,   ],
-    ADDI    : [ "addi",     ADDI_MASK,  I_TYPE,   CL_ALU,   ],
+    LW      : [ "lw",       LW_MASK,    IL_TYPE, CL_MEM,   ],
+    SW      : [ "sw",       SW_MASK,    S_TYPE,  CL_MEM,   ],
+    AUIPC   : [ "auipc",    AUIPC_MASK, U_TYPE,  CL_ALU,   ],
+    LUI     : [ "lui",      LUI_MASK,   U_TYPE,  CL_ALU,   ],
+    ADDI    : [ "addi",     ADDI_MASK,  I_TYPE,  CL_ALU,   ],
 
-    SLLI    : [ "slli",     SLLI_MASK,  IS_TYPE,  CL_ALU,   ],
-    SLTI    : [ "slti",     SLTI_MASK,  I_TYPE,   CL_ALU,   ],
-    SLTIU   : [ "sltiu",    SLTIU_MASK, I_TYPE,   CL_ALU,   ],
-    XORI    : [ "xori",     XORI_MASK,  I_TYPE,   CL_ALU,   ],
-    SRLI    : [ "srli",     SRLI_MASK,  IS_TYPE,  CL_ALU,   ],
+    SLLI    : [ "slli",     SLLI_MASK,  IS_TYPE, CL_ALU,   ],
+    SLTI    : [ "slti",     SLTI_MASK,  I_TYPE,  CL_ALU,   ],
+    SLTIU   : [ "sltiu",    SLTIU_MASK, I_TYPE,  CL_ALU,   ],
+    XORI    : [ "xori",     XORI_MASK,  I_TYPE,  CL_ALU,   ],
+    SRLI    : [ "srli",     SRLI_MASK,  IS_TYPE, CL_ALU,   ],
 
-    SRAI    : [ "srai",     SRAI_MASK,  IS_TYPE,  CL_ALU,   ],
-    ORI     : [ "ori",      ORI_MASK,   I_TYPE,   CL_ALU,   ],
-    ANDI    : [ "andi",     ANDI_MASK,  I_TYPE,   CL_ALU,   ],
-    ADD     : [ "add",      ADD_MASK,   R_TYPE,   CL_ALU,   ],
-    SUB     : [ "sub",      SUB_MASK,   R_TYPE,   CL_ALU,   ],
+    SRAI    : [ "srai",     SRAI_MASK,  IS_TYPE, CL_ALU,   ],
+    ORI     : [ "ori",      ORI_MASK,   I_TYPE,  CL_ALU,   ],
+    ANDI    : [ "andi",     ANDI_MASK,  I_TYPE,  CL_ALU,   ],
+    ADD     : [ "add",      ADD_MASK,   R_TYPE,  CL_ALU,   ],
+    SUB     : [ "sub",      SUB_MASK,   R_TYPE,  CL_ALU,   ],
 
-    SLL     : [ "sll",      SLL_MASK,   R_TYPE,   CL_ALU,   ],
-    SLT     : [ "slt",      SLT_MASK,   R_TYPE,   CL_ALU,   ],
-    SLTU    : [ "sltu",     SLTU_MASK,  R_TYPE,   CL_ALU,   ],
-    XOR     : [ "xor",      XOR_MASK,   R_TYPE,   CL_ALU,   ],
-    SRL     : [ "srl",      SRL_MASK,   R_TYPE,   CL_ALU,   ],
+    SLL     : [ "sll",      SLL_MASK,   R_TYPE,  CL_ALU,   ],
+    SLT     : [ "slt",      SLT_MASK,   R_TYPE,  CL_ALU,   ],
+    SLTU    : [ "sltu",     SLTU_MASK,  R_TYPE,  CL_ALU,   ],
+    XOR     : [ "xor",      XOR_MASK,   R_TYPE,  CL_ALU,   ],
+    SRL     : [ "srl",      SRL_MASK,   R_TYPE,  CL_ALU,   ],
 
-    SRA     : [ "sra",      SRA_MASK,   R_TYPE,   CL_ALU,   ],
-    OR      : [ "or",       OR_MASK,    R_TYPE,   CL_ALU,   ],
-    AND     : [ "and",      AND_MASK,   R_TYPE,   CL_ALU,   ],
-    JALR    : [ "jalr",     JALR_MASK,  IJ_TYPE,  CL_CTRL,  ],
-    JAL     : [ "jal",      JAL_MASK,   J_TYPE,   CL_CTRL,  ],
+    SRA     : [ "sra",      SRA_MASK,   R_TYPE,  CL_ALU,   ],
+    OR      : [ "or",       OR_MASK,    R_TYPE,  CL_ALU,   ],
+    AND     : [ "and",      AND_MASK,   R_TYPE,  CL_ALU,   ],
+    JALR    : [ "jalr",     JALR_MASK,  IJ_TYPE, CL_CTRL,  ],
+    JAL     : [ "jal",      JAL_MASK,   J_TYPE,  CL_CTRL,  ],
 
-    BEQ     : [ "beq",      BEQ_MASK,   B_TYPE,   CL_CTRL,  ],
-    BNE     : [ "bne",      BNE_MASK,   B_TYPE,   CL_CTRL,  ],
-    BLT     : [ "blt",      BLT_MASK,   B_TYPE,   CL_CTRL,  ],
-    BGE     : [ "bge",      BGE_MASK,   B_TYPE,   CL_CTRL,  ],
-    BLTU    : [ "bltu",     BLTU_MASK,  B_TYPE,   CL_CTRL,  ],
+    BEQ     : [ "beq",      BEQ_MASK,   B_TYPE,  CL_CTRL,  ],
+    BNE     : [ "bne",      BNE_MASK,   B_TYPE,  CL_CTRL,  ],
+    BLT     : [ "blt",      BLT_MASK,   B_TYPE,  CL_CTRL,  ],
+    BGE     : [ "bge",      BGE_MASK,   B_TYPE,  CL_CTRL,  ],
+    BLTU    : [ "bltu",     BLTU_MASK,  B_TYPE,  CL_CTRL,  ],
 
-    BGEU    : [ "bgeu",     BGEU_MASK,  B_TYPE,   CL_CTRL,  ],
-    ECALL   : [ "ecall",    ECALL_MASK, X_TYPE,   CL_CTRL,  ],
-    EBREAK  : [ "ebreak",   EBREAK_MASK,X_TYPE,   CL_CTRL,  ],
+    BGEU    : [ "bgeu",     BGEU_MASK,  B_TYPE,  CL_CTRL,  ],
+    ECALL   : [ "ecall",    ECALL_MASK, X_TYPE,  CL_CTRL,  ],
+    EBREAK  : [ "ebreak",   EBREAK_MASK,X_TYPE,  CL_CTRL,  ],
+
+    MUL     : [ "mul",      MUL_MASK,   R_TYPE,  CL_ALU,   ],
 }
 
 

@@ -187,7 +187,7 @@ class IF(Pipe):
         if (Pipe.CTL.ID_bubble and Pipe.CTL.ID_stall):
             print("Assert failed: ID_bubble && ID_stall")
             sys.exit()
-        
+
         if Pipe.CTL.ID_bubble:
             ID.reg_pc           = self.pc
             ID.reg_inst         = WORD(BUBBLE)
@@ -419,7 +419,7 @@ class EX(Pipe):
         # we change the input of ALU to rs2_data.
         self.alu2_data  = self.rs2_data     if self.c_br_type in [ BR_NE, BR_EQ, BR_GE, BR_GEU, BR_LT, BR_LTU ] else \
                           self.op2_data
-        
+
         # Perform ALU operation
         self.alu_out = Pipe.cpu.alu.op(self.c_alu_fun, self.op1_data, self.alu2_data)
 
@@ -477,6 +477,7 @@ class EX(Pipe):
             ALU_COPY1   : f'# {self.alu_out:#010x} <- {self.op1_data:#010x} (pass 1)',
             ALU_COPY2   : f'# {self.alu_out:#010x} <- {self.alu2_data:#010x} (pass 2)',
             ALU_SEQ     : f'# {self.alu_out:#010x} <- {self.op1_data:#010x} == {self.alu2_data:#010x}',
+            ALU_MUL     : f'# {self.alu_out:#010x} <- {self.op1_data:#010x} * {self.alu2_data:#010x}',
         }
         return('# -' if self.inst == BUBBLE else ALU_OPS[self.c_alu_fun]);
 
