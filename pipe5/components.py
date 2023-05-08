@@ -70,6 +70,8 @@ class RegisterFile(object):
                 str += "%-11s0x%08x    " % ("%s ($%d):" % (name, r), val)
             print(str)
 
+        print("")
+
 
 #--------------------------------------------------------------------------
 #   Register: models a single 32-bit register
@@ -142,17 +144,21 @@ class Memory(object):
         print("=" * 30)
         skipz = False
         printsz = True
-        for a in range(self.mem_start, self.mem_end, self.word_size):
+
+        adr_range=range(self.mem_start, self.mem_end, self.word_size);
+        for a in adr_range:
             val, status = self.access(True, a, 0, M_XRD)
             if not status:
                 continue
-            if (not skipzero) or (not skipz) or (val != 0):
+            if (not skipzero) or (not skipz) or (val != 0) or (a == adr_range[-1]):
                 skipz = val == 0
                 printsz = True
                 print("0x%08x: " % a, ' '.join("%02x" % ((val >> i) & 0xff) for i in [0, 8, 16, 24]), " (0x%08x)" % val)
             elif printsz:
                 printsz = False
                 print("             ...")
+
+        print("")
 
 
 #--------------------------------------------------------------------------
