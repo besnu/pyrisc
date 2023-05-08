@@ -46,7 +46,8 @@ DMEM_SIZE   = WORD(64 * 1024)
 
 class SNURISC5(object):
 
-    def __init__(self):
+    def __init__(self, imem_start=IMEM_START, imem_size=IMEM_SIZE,
+                       dmem_start=DMEM_START, dmem_size=DMEM_SIZE):
 
         stages = [ IF(), ID(), EX(), MM(), WB() ]
         self.ctl = Control()
@@ -54,10 +55,19 @@ class SNURISC5(object):
 
         self.rf = RegisterFile()
         self.alu = ALU()
-        self.imem = Memory(IMEM_START, IMEM_SIZE, WORD_SIZE)
-        self.dmem = Memory(DMEM_START, DMEM_SIZE, WORD_SIZE)
+        self.imem = Memory(imem_start, imem_size, WORD_SIZE)
+        self.dmem = Memory(dmem_start, dmem_size, WORD_SIZE)
         self.adder_brtarget = Adder()
         self.adder_pcplus4 = Adder()
+
+        print(f"SnuRISC-V\n"
+              f"  architecture:          {BITWIDTH} bit\n"
+              f"  pipeline stages:       {len(stages)}\n"
+              f"\n"
+              f"  instruction memory:    {imem_start:08x} - {imem_start+imem_size-1:08x}"
+              f" ({imem_size} bytes)\n"
+              f"  data memory:           {dmem_start:08x} - {dmem_start+dmem_size-1:08x}"
+              f" ({dmem_size} bytes)\n")
 
     def run(self, entry_point):
         Pipe.run(entry_point)
@@ -67,44 +77,37 @@ class SNURISC5(object):
 #   Utility functions for command line parsing
 #--------------------------------------------------------------------------
 
-def show_usage(name):
-    print("SNURISC5: A 5-stage Pipelined RISC-V ISA Simulator in Python")
-    print("Usage: %s [-l n] [-c m] [-i addr size filename] [-o addr size filename] filename" % name)
-    print("\tfilename: RISC-V executable file name")
-    print("\t-l sets the desired log level n (default: 4)")
-    print("\t   0: shows no output message")
-    print("\t   1: dumps registers at the end of the execution")
-    print("\t   2: dumps registers and memory at the end of the execution")
-    print("\t   3: 2 + shows instructions retired from the WB stage")
-    print("\t   4: 3 + shows all the instructions in the pipeline")
-    print("\t   5: 4 + shows full information for each instruction")
-    print("\t   6: 5 + dumps registers for each cycle")
-    print("\t   7: 6 + dumps data memory for each cycle")
-    print("\t-c shows logs after cycle m (default: 0, only effective for log level 3 or higher)")
-    print("\t-i load 'filename' to 'addr' (maximum size 'size')")
-    print("\t-o save memory from 'addr' to 'addr'+'size' to 'filename' after program ends")
-
-
 def parse_args(args):
 
     # Parse command line
     parser = argparse.ArgumentParser(usage='%(prog)s --help for more information', 
                                      formatter_class=argparse.RawTextHelpFormatter)
-    parser.add_argument("--log", "-l", type=int, default=Log.level, help='''sets the desired log level (default: %(default)s)
-  0: logging disabled
-  1: dumps registers at the end of the execution
-  2: dumps registers and memory at the end of the execution
-  3: 2 + shows instructions retired from the WB stage
-  4: 3 + shows all the instructions in the pipeline
-  5: 4 + shows full information for each instruction
-  6: 5 + dumps registers for each cycle
-  7: 6 + dumps data memory for each cycle''')
+    parser.add_argument("--log", "-l", type=int, default=Log.level, help='''\
+sets the desired log level (default: %(default)s)
+ 0: logging disabled
+ 1: dumps registers at the end of the execution
+ 2: dumps registers and memory at the end of the execution
+ 3: 2 + shows instructions retired from the WB stage
+ 4: 3 + shows all the instructions in the pipeline
+ 5: 4 + shows full information for each instruction
+ 6: 5 + dumps registers for each cycle
+ 7: 6 + dumps data memory for each cycle''')
     parser.add_argument("--cycle", "-c", type=int, default=0,
-                        help="shows logs after cycle m (default: %(default)s, only effective for log level 3 or higher)")
-    parser.add_argument("--input", "-i", action="append", nargs=3, metavar=("address", "maxsize", "filename"),
-                        help="Load file to the indicated address before execution. Aborts of the file is larger than maxsize.")
-    parser.add_argument("--output", "-o", action="append", nargs=3, metavar=("address", "size", "filename"),
-                        help="Save the memory from address to address+size-1 to a file.")
+        help="shows logs after cycle m (default: %(default)s, only effective for log level 3 or higher)")
+    parser.add_argument("--input", "-i", action="append", 
+        nargs=3, metavar=("address", "maxsize", "filename"),
+        help="Load file to the indicated address before execution. Aborts of the file is larger than maxsize.")
+    parser.add_argument("--output", "-o", action="append", 
+        nargs=3, metavar=("address", "size", "filename"),
+        help="Save the memory from address to address+size-1 to a file.")
+    parser.add_argument("--imem-addr", "-ima", type=lambda x: int(x, 0), default=IMEM_START,
+        help="Set start address of instruction memory. Default: %(default)08x.")
+    parser.add_argument("--imem-size", "-ims", type=lambda x: int(x, 0), default=IMEM_SIZE,
+        help="Set size of instruction memory. Default: %(default)08x.")
+    parser.add_argument("--dmem-addr", "-dma", type=lambda x: int(x, 0), default=DMEM_START,
+        help="Set start address of data memory. Default: %(default)08x.")
+    parser.add_argument("--dmem-size", "-dms", type=lambda x: int(x, 0), default=DMEM_SIZE,
+        help="Set size of data memory. Default: %(default)08x.")
     parser.add_argument("filename", type=str, help="RISC-V executable file name")
 
     args = parser.parse_args()
@@ -113,6 +116,13 @@ def parse_args(args):
     if args.log < 0 or args.log > Log.MAX_LOG_LEVEL:
         print("Invalid log level {args.log}. Valid range: 0 .. {Log.MAX_LOG_LEVEL}")
         parser.print_help()
+        exit(1)
+
+    if ((args.imem_addr < args.dmem_addr and args.imem_addr + args.imem_size > args.dmem_addr) or
+        (args.dmem_addr < args.imem_addr and args.dmem_addr + args.dmem_size > args.imem_addr)):
+        print("Instruction and data memory must not overlap.")
+        print(f"  Instruction memory: {args.imem_addr:08x} - {args.imem_addr+args.imem_size:08x}")
+        print(f"         Data memory: {args.dmem_addr:08x} - {args.dmem_addr+args.dmem_size:08x}")
         exit(1)
 
     # Set arguments
@@ -136,7 +146,8 @@ def load_file(cpu, adr_str, maxsize_str, filename):
             cpu.dmem.copy_to(address, data)
 
     except ValueError:
-        print(f"Invalid data types in input parameter {adr_str} {maxsize_str} {filename}. Expected types are int int string.")
+        print(f"Invalid data types in input parameter {adr_str} {maxsize_str} {filename}. "
+               "Expected types are int int string.")
         raise
     except Exception as e:
         print(f"Error loading data into memory: {e.args[0]}")
@@ -154,7 +165,8 @@ def save_file(cpu, adr_str, size_str, filename):
             f.write(data)
 
     except ValueError:
-        print(f"Invalid data types in output parameter {adr_str} {size_str} {filename}. Expected types are int int string.")
+        print(f"Invalid data types in output parameter {adr_str} {size_str} {filename}. "
+               "Expected types are int int string.")
         raise
     except Exception as e:
         print(f"Error saving data to file: {e.args[0]}")
@@ -172,7 +184,7 @@ def main():
     args = parse_args(sys.argv[1:])
 
     # Instantiate CPU instance with H/W components
-    cpu = SNURISC5()
+    cpu = SNURISC5(args.imem_addr, args.imem_size, args.dmem_addr, args.dmem_size)
 
     # Make program instance
     prog = Program()
