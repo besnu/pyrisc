@@ -13,7 +13,7 @@
 
 .SUFFIXES:  .objdump
 
-PREFIX      = riscv32-unknown-elf-
+PREFIX      = riscv64-unknown-elf-
 CC	        = $(PREFIX)gcc
 CXX	        = $(PREFIX)g++
 AS	        = $(PREFIX)as
@@ -26,7 +26,7 @@ INCDIR      =
 LIBDIR      =
 LIBS        =
 
-CFLAGS      = -Og -march=rv32i -mabi=ilp32 -static 
+CFLAGS      = -Og -march=rv32im -mabi=ilp32 -static 
 ASLFAGS     = -march=rv32i -mabi=ilp32 -static 
 LDFLAGS     = -T./link.ld -nostdlib -nostartfiles
 OBJDFLAGS   = -D --section=.text --section=.data
@@ -57,6 +57,14 @@ forward: forward.o
 branch: branch.o
 	$(CC) $(LDFLAGS) -o $@ $< $(LIBDIR) $(LIBS)
 	$(OBJDUMP) $(OBJDFLAGS) $@ > $@.objdump    
+
+startup_test: startup.s startup_test.c
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
+	$(OBJDUMP) $(OBJDFLAGS) $@ > $@.objdump
+
+mul_test: startup.s mul_test.c mul.c
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
+	$(OBJDUMP) $(OBJDFLAGS) $@ > $@.objdump
 
 .s.o:
 	$(CC) -c $(CFLAGS) $(INCDIR) $< -o $@
