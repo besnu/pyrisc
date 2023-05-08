@@ -50,7 +50,7 @@ class Sim(object):
 
             if not status == EXC_NONE:
                 break
-      
+
         # Handle exceptions, if any
         if (status & EXC_DMEM_ERROR):
             print("Exception '%s' occurred at 0x%08x -- Program terminated" % (EXC_MSG[EXC_DMEM_ERROR], Sim.cpu.pc.read()))
@@ -100,14 +100,14 @@ class Sim(object):
 
         alu1        = rs1_data      if cs[IN_ALU1] == OP1_RS1    else \
                       pc            if cs[IN_ALU1] == OP1_PC     else \
-                      WORD(0)       
+                      WORD(0)
 
         alu2        = rs2_data      if cs[IN_ALU2] == OP2_RS2    else \
                       imm_i         if cs[IN_ALU2] == OP2_IMI    else \
                       imm_u         if cs[IN_ALU2] == OP2_IMU    else \
                       WORD(0)
 
-        
+
         alu_out     = WORD(alu1 + alu2)                     if (cs[IN_OP] == ALU_ADD)           else \
                       WORD(alu1 - alu2)                     if (cs[IN_OP] == ALU_SUB)           else \
                       WORD(alu1 & alu2)                     if (cs[IN_OP] == ALU_AND)           else \
@@ -120,6 +120,7 @@ class Sim(object):
                       WORD(alu1 << (alu2 & 0x1f))           if (cs[IN_OP] == ALU_SLL)           else \
                       WORD(SWORD(alu1) >> (alu2 & 0x1f))    if (cs[IN_OP] == ALU_SRA)           else \
                       WORD(alu1 >> (alu2 & 0x1f))           if (cs[IN_OP] == ALU_SRL)           else \
+                      WORD(SWORD(alu1) * SWORD(alu2))       if (cs[IN_OP] == ALU_MUL)           else \
                       WORD(0)
 
         pc_next     = pc + 4
@@ -132,7 +133,7 @@ class Sim(object):
     def run_mem(pc, inst, opcode, cs):
 
         Stat.inst_mem += 1
-       
+
         rs1         = RISCV.rs1(inst)
         rs1_data    = Sim.cpu.regs.read(rs1)
 
@@ -144,7 +145,7 @@ class Sim(object):
             if dmem_ok:
                 Sim.cpu.regs.write(rd, mem_data)
         else:
-            rd          = 0                     
+            rd          = 0
             rs2         = RISCV.rs2(inst)
             rs2_data    = Sim.cpu.regs.read(rs2)
 

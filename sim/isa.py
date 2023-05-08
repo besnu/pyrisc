@@ -61,6 +61,15 @@ BGEU        = WORD(0b00000000000000000111000001100011)
 ECALL       = WORD(0b00000000000000000000000001110011)
 EBREAK      = WORD(0b00000000000100000000000001110011)
 
+# M extension
+MUL         = WORD(0b00000010000000000000000000110011)
+#MULH        = WORD(0b00000010000000000001000000110011)
+#MULHSU      = WORD(0b00000010000000000010000000110011)
+#MULHU       = WORD(0b00000010000000000011000000110011)
+#DIV         = WORD(0b00000010000000000100000000110011)
+#DIVU        = WORD(0b00000010000000000101000000110011)
+#REM         = WORD(0b00000010000000000110000000110011)
+#REMU        = WORD(0b00000010000000000111000000110011)
 
 #--------------------------------------------------------------------------
 #   Instruction masks
@@ -106,9 +115,19 @@ BGEU_MASK   = WORD(0b00000000000000000111000001111111)
 ECALL_MASK  = WORD(0b11111111111111111111111111111111)
 EBREAK_MASK = WORD(0b11111111111111111111111111111111)
 
+# M extension
+R_MASK      = WORD(0b11111110000000000111000001111111)
+MUL_MASK    = R_MASK
+#MULH_MASK   = R_MASK
+#MULHSU_MASK = R_MASK
+#MULHU_MASK  = R_MASK
+#DIV_MASK    = R_MASK
+#DIVU_MASK   = R_MASK
+#REM_MASK    = R_MASK
+#REMU_MASK   = R_MASK
 
 #--------------------------------------------------------------------------
-#   ISA table
+#   ISA table: for opcode matching, disassembly, and run-time stats
 #--------------------------------------------------------------------------
 
 isa         = { 
@@ -151,6 +170,16 @@ isa         = {
     BGEU    : [ "bgeu",     BGEU_MASK,  B_TYPE,  CL_CTRL, OP1_RS1, OP2_IMB, ALU_X,    MT_X,  ],
     ECALL   : [ "ecall",    ECALL_MASK, X_TYPE,  CL_CTRL, OP1_X,   OP2_X,   ALU_X,    MT_X,  ],
     EBREAK  : [ "ebreak",   EBREAK_MASK,X_TYPE,  CL_CTRL, OP1_X,   OP2_X,   ALU_X,    MT_X,  ],
+
+    # M extension
+    MUL     : [ "mul",      MUL_MASK,   R_TYPE,  CL_ALU,  OP1_RS1, OP2_RS2, ALU_MUL,  MT_X,  ],
+    #MULH    : [ "mulh",     MULH_MASK,  R_TYPE,  CL_ALU,  OP1_RS1, OP2_RS2, ALU_MUL,  MT_X,  ],
+    #MULHSU  : [ "mulhsu",   MULHSU_MASK,R_TYPE,  CL_ALU,  OP1_RS1, OP2_RS2, ALU_MUL,  MT_X,  ],
+    #MULHU   : [ "mulhu",    MULHU_MASK, R_TYPE,  CL_ALU,  OP1_RS1, OP2_RS2, ALU_MUL,  MT_X,  ],
+    #DIV     : [ "div",      DIV_MASK,   R_TYPE,  CL_ALU,  OP1_RS1, OP2_RS2, ALU_MUL,  MT_X,  ],
+    #DIVU    : [ "divu",     DIVU_MASK,  R_TYPE,  CL_ALU,  OP1_RS1, OP2_RS2, ALU_MUL,  MT_X,  ],
+    #REM     : [ "rem",      REM_MASK,   R_TYPE,  CL_ALU,  OP1_RS1, OP2_RS2, ALU_MUL,  MT_X,  ],
+    #REMU    : [ "remu",     REMU_MASK,  R_TYPE,  CL_ALU,  OP1_RS1, OP2_RS2, ALU_MUL,  MT_X,  ],
 }
 
 
